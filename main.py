@@ -43,6 +43,25 @@ class PinCanvas(ctk.CTkCanvas):
             self.canvasx(event.x - self.__dragOffset[0]),
             self.canvasy(event.y - self.__dragOffset[1]),
         )
+        # how do i prevent these from overlapping on drag?
+        # while True:
+        #     changed = False
+        #     for pin, loc in self.locations.items():
+        #         if loc == newLoc:
+        #             offset = 5
+        #             newLoc = (newLoc[0]+offset, newLoc[1]+offset)
+        #             self.__dragOffset = (self.canvasx(event.x) - loc[0] + offset, self.canvasy(event.y) - loc[1] + offset)
+        #             # self.locations[pin] = newLoc
+        #             changed = True
+        #             print("Cannot overlap pins!")
+        #     if not changed:
+        #         break
+
+        # if i try  this way, when i attempt to drag another pin, it drags the old one. how do fix
+        for pin, loc in self.locations.items():
+            if loc == newLoc:
+                print("Cannot overlap pins!")
+                return
         self.moveto(pin, newLoc[0], newLoc[1])
         self.locations[pin] = newLoc
 
@@ -63,6 +82,10 @@ class PinCanvas(ctk.CTkCanvas):
         """
         Create pin image on canvas at given location, update location in dictionary, and bind the needed functions to the pin.
         """
+        for pin, oldLoc in self.locations.items():
+            if oldLoc == loc:
+                print("Cannot overlap pins!")
+                return
         pin = self.create_image(loc[0], loc[1], image=self.pinImg, anchor='nw')
         self.locations[pin] = loc
         # use default arguments in order to know which pin called this function since bind only does event
