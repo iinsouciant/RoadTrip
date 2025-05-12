@@ -55,6 +55,8 @@ class DisplayGraph(Graph):
 
         while unvisited:
             lastVert = route[-1]
+            nextVert = None
+            weight = 0
             for adjVert, dist in self.adj_list[lastVert]:
                 if adjVert in unvisited:
                     nextVert, weight = adjVert, dist
