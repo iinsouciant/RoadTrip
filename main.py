@@ -49,11 +49,26 @@ class PinCanvas(ctk.CTkCanvas):
 
         self.bind("<Double-Button-1>", __createPinHelper, add="+")
 
+    def __checkBounds(self, newLoc) -> tuple[int, int]:
+        corners = [(0,0), (720,525)]
+        result = newLoc
+        if corners[0][0] > newLoc[0]:
+            result = (corners[0][0], result[1])
+        elif newLoc[0] > corners[1][0]:
+            result = (corners[1][0], result[1])
+        if corners[0][1] > newLoc[1]:
+            result = (result[0], corners[0][1])
+        elif newLoc[1] > corners[1][1]:
+            result = (result[0], corners[1][1])
+
+        return result
+
     def __movePin(self, event: Event, pin) -> None:
         newLoc = (
             self.canvasx(event.x - self.__dragOffset[0]),
             self.canvasy(event.y - self.__dragOffset[1]),
         )
+        newLoc = self.__checkBounds(newLoc)
 
         # prevent overlap on drag by shifting from cursor
         while True:
@@ -88,9 +103,9 @@ class PinCanvas(ctk.CTkCanvas):
         self.delete(pin)
         self.locations.pop(pin, None)
 
-    def updateCoordText(self, event: Event) -> None:
+    def __updateCoordText(self, event: Event, pin) -> None:
         self.pinCoords.configure(
-            text=f"X: {int(event.x - self.__dragOffset[0])} Y:{int(event.y - self.__dragOffset[1])}"
+            text=f"X: {int(self.locations[pin][0])} Y:{int(self.locations[pin][1])}"
         )
 
     def createPin(self, loc) -> None:
@@ -114,8 +129,11 @@ class PinCanvas(ctk.CTkCanvas):
         def removeHandler(event, self=self, pin=pin):
             return self.__removePin(event, pin)
 
+        def coordHandler(event, self=self, pin=pin):
+            return self.__updateCoordText(event, pin)
+
         self.tag_bind(pin, "<Button-1>", offsetHandler, add="+")
-        self.tag_bind(pin, "<Button1-Motion>", self.updateCoordText, add="+")
+        self.tag_bind(pin, "<Button1-Motion>", coordHandler, add="+")
         self.tag_bind(pin, "<Button1-Motion>", moveHandler, add="+")
         self.tag_bind(pin, "<Button-3>", removeHandler, add="+")
 
