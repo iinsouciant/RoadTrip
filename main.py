@@ -1,7 +1,7 @@
 from tkinter import PhotoImage, Tk, Label, Event
 from PIL import Image, ImageTk
 import customtkinter as ctk
-import pywinstyles
+from pywinstyles import set_opacity
 
 
 class PinImage(ImageTk.PhotoImage):
@@ -11,6 +11,10 @@ class PinImage(ImageTk.PhotoImage):
         super().__init__(
             Image.open(pinPath).resize(self.pinSize, Image.Resampling.NEAREST)
         )
+    
+    def bluePin(self):
+        path = "./pinBlue.png"
+        return ImageTk.PhotoImage(Image.open(path).resize(self.pinSize, Image.Resampling.NEAREST))
 
 
 class PinCanvas(ctk.CTkCanvas):
@@ -25,9 +29,10 @@ class PinCanvas(ctk.CTkCanvas):
             width=size[1],
         )
         self.grid(row=0, column=2, padx=0, pady=0, rowspan=3, sticky="nsew")
-        pywinstyles.set_opacity(self, color="#000001")
+        set_opacity(self, color="#000001")
         # Pin Stuff
         self.pinImg = PinImage()
+        self.bluePinImg = self.pinImg.bluePin()
         self.locations = {}
         self.lines = []
 
@@ -133,10 +138,19 @@ class PinCanvas(ctk.CTkCanvas):
         def coordHandler(event, self=self, pin=pin):
             return self.__updateCoordText(event, pin)
 
+        def startHandler(event, self=self, pin=pin):
+            if pin == self.startPin:
+                return
+            if self.startPin:
+                self.itemconfigure(self.startPin, image=self.pinImg)
+            self.startPin = pin
+            self.itemconfigure(pin,image=self.bluePinImg)
+
         self.tag_bind(pin, "<Button-1>", offsetHandler, add="+")
         self.tag_bind(pin, "<Button1-Motion>", coordHandler, add="+")
         self.tag_bind(pin, "<Button1-Motion>", moveHandler, add="+")
         self.tag_bind(pin, "<Button-3>", removeHandler, add="+")
+        self.tag_bind(pin, "<Button-2>", startHandler, add="+")
 
     def drawAllLines(self):
         xOffset = self.pinImg.pinSize[0]//2
