@@ -105,7 +105,7 @@ class PinCanvas(ctk.CTkCanvas):
             height=size[0],
             width=size[1],
         )
-        self.grid(row=0, column=2, padx=0, pady=0, rowspan=3, sticky="nsew")
+        self.grid(row=0, column=3, padx=0, pady=0, rowspan=3, sticky="nsew")
         set_opacity(self, color="#000001")
         # Pin Stuff
         self.pinImg = PinImage()
@@ -242,6 +242,10 @@ class PinCanvas(ctk.CTkCanvas):
         self.tag_bind(pin, "<Button-3>", removeHandler, add="+")
         self.tag_bind(pin, "<Button-2>", startHandler, add="+")
 
+    def raisePins(self) -> None:
+        for pin in list(self.locations):
+            self.tkraise(pin)
+
     def drawAllLines(self):
         xOffset = self.pinImg.pinSize[0] // 2
         yOffset = self.pinImg.pinSize[1] // 2
@@ -260,6 +264,7 @@ class PinCanvas(ctk.CTkCanvas):
                             fill="#faf7f2",
                         )
                     )
+        self.raisePins()
 
     def drawRoute(self, pins:list[int]) -> None:
         xOffset = self.pinImg.pinSize[0] // 2
@@ -279,6 +284,7 @@ class PinCanvas(ctk.CTkCanvas):
                     fill="#faf7f2",
                 )
             )
+        self.raisePins()
 
     def getStartPin(self) -> int | None:
         if len(self.locations) <= 0:
@@ -306,6 +312,11 @@ class PinCanvas(ctk.CTkCanvas):
                 )
 
         self.graph.drawEdges()
+    
+    def displayNearestNeighborSolution(self) -> None:
+        self.createCurrentGraph()
+        nnRoute = self.graph.nearestNeighborRoute()
+        self.drawRoute(nnRoute)
 
     def displayShortestCycle(self) -> None:
         """
@@ -333,7 +344,7 @@ class PinFrame(ctk.CTkFrame):
             height=size[0],
             width=size[1],
         )
-        self.grid(row=0, column=2, padx=0, pady=0, rowspan=3, sticky="nsew")
+        self.grid(row=0, column=3, padx=0, pady=0, rowspan=3, sticky="nsew")
 
         # create another helper in case the frame is above canvas and takes the events instead of the canvas
         def __createPinHelper(event):
@@ -358,7 +369,8 @@ class ContainerFrame(ctk.CTkFrame):
         self.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
-        self.grid_columnconfigure(2, weight=6)
+        self.grid_columnconfigure(2, weight=1)
+        self.grid_columnconfigure(3, weight=7)
         self.grid_rowconfigure(0, weight=5)
         self.grid_rowconfigure(1, weight=2)
         self.grid_rowconfigure(2, weight=1)
@@ -379,10 +391,10 @@ class ContainerFrame(ctk.CTkFrame):
         )
         # self.title.configure(fg_color="gray30", height=headerFontSize+10)
         self.title.grid(
-            row=0, column=0, padx=10, pady=(10, 0), columnspan=2, sticky="sew"
+            row=0, column=0, padx=10, pady=(10, 0), columnspan=3, sticky="sew"
         )
         # create body
-        bodyText = "Double left click to place a pin.\nLeft click drag and drop.\nRight click pin to delete.\nSubmit when ready!"
+        bodyText = "Double left click to place a pin.\nLeft click drag and drop.\nRight click pin to delete.\nMiddle click to select the start.\nSubmit when ready!"
         self.body = ctk.CTkLabel(
             self,
             text=bodyText,
@@ -392,19 +404,46 @@ class ContainerFrame(ctk.CTkFrame):
             font=font,
         )
         self.body.grid(
-            row=1, column=0, padx=10, pady=(0, 10), columnspan=2, sticky="new"
+            row=1, column=0, padx=10, pady=(0, 10), columnspan=3, sticky="new"
         )
+
+        buttonFont = (font[0], font[1]//1.5)
         # create submit and reset button
         self.submitButton = ctk.CTkButton(
-            self, text="Submit", command=self.submitLocations
+            self, text="Submit", command=self.submitLocations, font=buttonFont,
         )
         self.submitButton.grid(row=2, column=0, padx=(5, 2), pady=5, sticky="sew")
-        self.resetButton = ctk.CTkButton(self, text="Reset", command=self.resetPins)
-        self.resetButton.grid(row=2, column=1, padx=(2, 5), pady=5, sticky="sew")
+
+        self.SOLUTIONS = ["Nearest Neigbor", "Brute Force", "TBD"]
+        self.solutionComboBox = ctk.CTkComboBox(
+            self,
+            values=self.SOLUTIONS,
+            font=buttonFont,
+            command=self.solutionChoice,
+            button_hover_color=('#36719F', '#144870'),
+            button_color=('#3B8ED0', '#1F6AA5'),
+            state="readonly",
+        )
+        self.solutionComboBox.grid(row=2, column=1, padx=2, pady=5, sticky="sew")
+        self.solutionComboBox.set(self.SOLUTIONS[0])
+        self.choice = self.solutionComboBox.get()
+
+        self.resetButton = ctk.CTkButton(self, text="Reset", command=self.resetPins, font=buttonFont,)
+        self.resetButton.grid(row=2, column=2, padx=(2, 5), pady=5, sticky="sew")
+
+    def solutionChoice(self, choice):
+        self.choice = choice
 
     def submitLocations(self):
-        # self.pinCanvas.drawAllLines()
-        self.pinCanvas.displayShortestCycle()
+        if self.choice == self.SOLUTIONS[0]:
+            self.pinCanvas.displayNearestNeighborSolution()
+            return
+        elif self.choice == self.SOLUTIONS[1]:
+            self.pinCanvas.displayShortestCycle()
+        elif True:
+            self.pinCanvas.drawAllLines()
+            return
+        
 
     def resetPins(self):
         """Remove all pins from canvas"""
