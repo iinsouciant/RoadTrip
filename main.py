@@ -50,7 +50,8 @@ class PinCanvas(ctk.CTkCanvas):
         self.bind("<Double-Button-1>", __createPinHelper, add="+")
 
     def __checkBounds(self, newLoc) -> tuple[int, int]:
-        corners = [(0,0), (720,525)]
+        seCorner = (self.winfo_width()-self.pinImg.pinSize[0]-1,self.winfo_height()-self.pinImg.pinSize[1])
+        corners = [(0,0), seCorner]
         result = newLoc
         if corners[0][0] > newLoc[0]:
             result = (corners[0][0], result[1])
