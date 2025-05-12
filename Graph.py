@@ -13,7 +13,7 @@ class Graph:
 
     def __init__(self):
         # Dictionary to store adjacency list with weights
-        self.adj_list = {}  # nodes = landmarks
+        self.adj_list: dict["Vertex", list[list["Vertex",float]]] = {}  # nodes = landmarks
         self.edges:list[tuple[float, "Vertex", "Vertex"]] = []  # edges = roads in between the landmarks
 
     def addVertex(self, vertex):

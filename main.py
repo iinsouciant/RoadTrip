@@ -2,22 +2,26 @@ from tkinter import PhotoImage, Tk, Label, Event
 from PIL import Image, ImageTk
 import customtkinter as ctk
 from pywinstyles import set_opacity
-from Graph import Graph
+from Graph import Graph, Vertex
 import random
 from math import sqrt
+
 
 class DisplayGraph(Graph):
     def __init__(self, canvas: "PinCanvas"):
         super().__init__()
         self.canvas: PinCanvas = canvas
 
-    def drawEdges(self):
+    def drawEdges(self, edges: None | list[tuple[float, int, int]] = None):
         xOffset = self.canvas.pinImg.pinSize[0] // 2
         yOffset = self.canvas.pinImg.pinSize[1] // 2
         for line in self.canvas.lines:
             self.canvas.delete(line)
 
-        for edge in self.edges:
+        if not edges:
+            edges = self.edges
+
+        for edge in edges:
             loc1 = self.canvas.locations[edge[1]]
             loc2 = self.canvas.locations[edge[2]]
             self.canvas.lines.append(
@@ -30,7 +34,49 @@ class DisplayGraph(Graph):
                     fill="#faf7f2",
                 )
             )
-        
+
+    def getRouteCost(self) -> float:
+        """Sum total cost for all existing edges (the total distance travelled w/ current route)"""
+        cost = 0
+        for edge in self.edges:
+            cost += edge[0]
+        return cost
+    
+    def nearestNeighborRoute(self, startVertex: int|None = None) -> list["Vertex"]:
+        if not startVertex:
+            startVertex = self.canvas.getStartPin()
+        unvisited = set(vert for vert in list(self.adj_list))
+        unvisited.remove(startVertex)
+        route = [startVertex]
+        distance = 0
+
+        for vert in list(self.adj_list):
+            self.adj_list[vert].sort(key= lambda edge: edge[1])
+
+        while unvisited:
+            lastVert = route[-1]
+            for adjVert, dist in self.adj_list[lastVert]:
+                if adjVert in unvisited:
+                    nextVert, weight = adjVert, dist
+                    break
+            route.append(nextVert)
+            distance += weight
+            unvisited.remove(nextVert)
+            # minDist = float("inf")
+            # for adjVert in unvisited:
+            #     minDist = min(self.adj_list[])
+        route.append(startVertex)
+        for edge in self.edges:
+            w, v1, v2 = edge
+            if (v1 == route[-2] or v2 == route[-2]) and (v1 == route[-1] or v2 == route[-1]):
+                distance += w
+                break
+        print(f"Nearest neighbor distance: {distance}")
+        return route
+
+    def bruteForceRoute(self):
+        """Brute force all permutations of paths to compare performance vs efficiency"""
+        pass
 
 
 class PinImage(ImageTk.PhotoImage):
@@ -40,10 +86,12 @@ class PinImage(ImageTk.PhotoImage):
         super().__init__(
             Image.open(pinPath).resize(self.pinSize, Image.Resampling.NEAREST)
         )
-    
+
     def bluePin(self):
         path = "./pinBlue.png"
-        return ImageTk.PhotoImage(Image.open(path).resize(self.pinSize, Image.Resampling.NEAREST))
+        return ImageTk.PhotoImage(
+            Image.open(path).resize(self.pinSize, Image.Resampling.NEAREST)
+        )
 
 
 class PinCanvas(ctk.CTkCanvas):
@@ -64,7 +112,7 @@ class PinCanvas(ctk.CTkCanvas):
         self.bluePinImg = self.pinImg.bluePin()
         self.locations = {}
         self.lines = []
-        self.startPin: int|None = None
+        self.startPin: int | None = None
 
         # less options to make text pretty do not use
         # self.test = self.create_text(100,10,anchor="nw",font=font,text="X: None Y: None",)
@@ -153,6 +201,14 @@ class PinCanvas(ctk.CTkCanvas):
         )
         # self.itemconfigure(self.test,text=f"X: {int(self.locations[pin][0])} Y:{int(self.locations[pin][1])}")canvas
 
+    def setStartPin(self, pin) -> None:
+        if pin == self.startPin:
+            return
+        if self.startPin:
+            self.itemconfigure(self.startPin, image=self.pinImg)
+        self.startPin = pin
+        self.itemconfigure(pin, image=self.bluePinImg)
+
     def createPin(self, loc) -> None:
         """
         Create pin image on canvas at given location, update location in dictionary, and bind the needed functions to the pin.
@@ -178,12 +234,7 @@ class PinCanvas(ctk.CTkCanvas):
             return self.__updateCoordText(event, pin)
 
         def startHandler(event, self=self, pin=pin):
-            if pin == self.startPin:
-                return
-            if self.startPin:
-                self.itemconfigure(self.startPin, image=self.pinImg)
-            self.startPin = pin
-            self.itemconfigure(pin,image=self.bluePinImg)
+            self.setStartPin(pin)
 
         self.tag_bind(pin, "<Button-1>", offsetHandler, add="+")
         self.tag_bind(pin, "<Button1-Motion>", coordHandler, add="+")
@@ -196,51 +247,73 @@ class PinCanvas(ctk.CTkCanvas):
         yOffset = self.pinImg.pinSize[1] // 2
         for line in self.lines:
             self.delete(line)
-        for pin, loc in self.locations.items():
+        for pin1, loc1 in self.locations.items():
             for pin2, loc2 in self.locations.items():
-                if pin != pin2:
+                if pin1 != pin2:
                     self.lines.append(
                         self.create_line(
-                            loc[0] + xOffset,
-                            loc[1] + yOffset,
+                            loc1[0] + xOffset,
+                            loc1[1] + yOffset,
                             loc2[0] + xOffset,
                             loc2[1] + yOffset,
                             width=2,
                             fill="#faf7f2",
                         )
                     )
-    
-    def getStartPin(self) -> int|None:
+
+    def drawRoute(self, pins:list[int]) -> None:
+        xOffset = self.pinImg.pinSize[0] // 2
+        yOffset = self.pinImg.pinSize[1] // 2
+        for line in self.lines:
+            self.delete(line)
+        for i in range(1,len(pins)):
+            loc1 = self.locations[pins[i-1]]
+            loc2 = self.locations[pins[i]]
+            self.lines.append(
+                self.create_line(
+                    loc1[0] + xOffset,
+                    loc1[1] + yOffset,
+                    loc2[0] + xOffset,
+                    loc2[1] + yOffset,
+                    width=2,
+                    fill="#faf7f2",
+                )
+            )
+
+    def getStartPin(self) -> int | None:
         if len(self.locations) <= 0:
             raise Exception("Cannot create cycle from 0 pins placed.")
             return
         if not self.startPin:
-            self.startPin = random.choice(list(self.locations))
-            self.itemconfigure(self.startPin,image=self.bluePinImg)
+            self.setStartPin(random.choice(list(self.locations)))
         return self.startPin
 
-    
     def createCurrentGraph(self) -> None:
         self.graph = DisplayGraph(self)
-        def distance(loc1:tuple[int, int], loc2: tuple[int,int]) -> float:
-            return sqrt((loc2[0]-loc1[0])**2 + (loc2[1]-loc1[1])**2)
-        
+
+        def distance(loc1: tuple[int, int], loc2: tuple[int, int]) -> float:
+            return sqrt((loc2[0] - loc1[0]) ** 2 + (loc2[1] - loc1[1]) ** 2)
+
         pins = list(self.locations)
         for pin in pins:
             self.graph.addVertex(pin)
         for i in range(len(pins)):
-            for j in range(i+1, len(pins)):
-                self.graph.addEdge(pins[i], pins[j], distance(self.locations[pins[i]],self.locations[pins[j]]))
+            for j in range(i + 1, len(pins)):
+                self.graph.addEdge(
+                    pins[i],
+                    pins[j],
+                    distance(self.locations[pins[i]], self.locations[pins[j]]),
+                )
 
         self.graph.drawEdges()
-
 
     def displayShortestCycle(self) -> None:
         """
         Creates a weighted graph of vertices using pin locations and distances to create the shortest cycle through all points.
         """
         self.createCurrentGraph()
-        
+        nnRoute = self.graph.nearestNeighborRoute()
+        self.drawRoute(nnRoute)
 
     def resetPins(self) -> None:
         """Delete all pins from canvas and clean up any lines."""
