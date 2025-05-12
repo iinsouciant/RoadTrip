@@ -2,6 +2,35 @@ from tkinter import PhotoImage, Tk, Label, Event
 from PIL import Image, ImageTk
 import customtkinter as ctk
 from pywinstyles import set_opacity
+from Graph import Graph
+import random
+from math import sqrt
+
+class DisplayGraph(Graph):
+    def __init__(self, canvas: "PinCanvas"):
+        super().__init__()
+        self.canvas: PinCanvas = canvas
+
+    def drawEdges(self):
+        xOffset = self.canvas.pinImg.pinSize[0] // 2
+        yOffset = self.canvas.pinImg.pinSize[1] // 2
+        for line in self.canvas.lines:
+            self.canvas.delete(line)
+
+        for edge in self.edges:
+            loc1 = self.canvas.locations[edge[1]]
+            loc2 = self.canvas.locations[edge[2]]
+            self.canvas.lines.append(
+                self.canvas.create_line(
+                    loc1[0] + xOffset,
+                    loc1[1] + yOffset,
+                    loc2[0] + xOffset,
+                    loc2[1] + yOffset,
+                    width=2,
+                    fill="#faf7f2",
+                )
+            )
+        
 
 
 class PinImage(ImageTk.PhotoImage):
@@ -35,12 +64,16 @@ class PinCanvas(ctk.CTkCanvas):
         self.bluePinImg = self.pinImg.bluePin()
         self.locations = {}
         self.lines = []
+        self.startPin: int|None = None
+
+        # less options to make text pretty do not use
+        # self.test = self.create_text(100,10,anchor="nw",font=font,text="X: None Y: None",)
 
         self.pinCoords = ctk.CTkLabel(
             self,
             text="X: None Y: None",
             font=font,
-            text_color="gray30",
+            text_color="#f4eadf",
             fg_color="#000001",
         )
         self.pinCoords.grid(row=0, column=0, padx=10, pady=10, sticky="nw")
@@ -56,8 +89,11 @@ class PinCanvas(ctk.CTkCanvas):
         self.bind("<Double-Button-1>", __createPinHelper, add="+")
 
     def __checkBounds(self, newLoc) -> tuple[int, int]:
-        seCorner = (self.winfo_width()-self.pinImg.pinSize[0]-1,self.winfo_height()-self.pinImg.pinSize[1])
-        corners = [(0,0), seCorner]
+        seCorner = (
+            self.winfo_width() - self.pinImg.pinSize[0] - 1,
+            self.winfo_height() - self.pinImg.pinSize[1],
+        )
+        corners = [(0, 0), seCorner]
         result = newLoc
         if corners[0][0] > newLoc[0]:
             result = (corners[0][0], result[1])
@@ -108,11 +144,14 @@ class PinCanvas(ctk.CTkCanvas):
     def __removePin(self, event: Event, pin) -> None:
         self.delete(pin)
         self.locations.pop(pin, None)
+        if self.startPin == pin:
+            self.startPin = None
 
     def __updateCoordText(self, event: Event, pin) -> None:
         self.pinCoords.configure(
             text=f"X: {int(self.locations[pin][0])} Y:{int(self.locations[pin][1])}"
         )
+        # self.itemconfigure(self.test,text=f"X: {int(self.locations[pin][0])} Y:{int(self.locations[pin][1])}")canvas
 
     def createPin(self, loc) -> None:
         """
@@ -153,22 +192,62 @@ class PinCanvas(ctk.CTkCanvas):
         self.tag_bind(pin, "<Button-2>", startHandler, add="+")
 
     def drawAllLines(self):
-        xOffset = self.pinImg.pinSize[0]//2
-        yOffset = self.pinImg.pinSize[1]//2
+        xOffset = self.pinImg.pinSize[0] // 2
+        yOffset = self.pinImg.pinSize[1] // 2
         for line in self.lines:
             self.delete(line)
         for pin, loc in self.locations.items():
             for pin2, loc2 in self.locations.items():
                 if pin != pin2:
-                    self.lines.append(self.create_line(loc[0]+xOffset, loc[1]+yOffset, loc2[0]+xOffset, loc2[1]+yOffset, width=2, fill="#faf7f2"))
+                    self.lines.append(
+                        self.create_line(
+                            loc[0] + xOffset,
+                            loc[1] + yOffset,
+                            loc2[0] + xOffset,
+                            loc2[1] + yOffset,
+                            width=2,
+                            fill="#faf7f2",
+                        )
+                    )
+    
+    def getStartPin(self) -> int|None:
+        if len(self.locations) <= 0:
+            raise Exception("Cannot create cycle from 0 pins placed.")
+            return
+        if not self.startPin:
+            self.startPin = random.choice(list(self.locations))
+            self.itemconfigure(self.startPin,image=self.bluePinImg)
+        return self.startPin
+
+    
+    def createCurrentGraph(self) -> None:
+        self.graph = DisplayGraph(self)
+        def distance(loc1:tuple[int, int], loc2: tuple[int,int]) -> float:
+            return sqrt((loc2[0]-loc1[0])**2 + (loc2[1]-loc1[1])**2)
+        
+        pins = list(self.locations)
+        for pin in pins:
+            self.graph.addVertex(pin)
+        for i in range(len(pins)):
+            for j in range(i+1, len(pins)):
+                self.graph.addEdge(pins[i], pins[j], distance(self.locations[pins[i]],self.locations[pins[j]]))
+
+        self.graph.drawEdges()
+
+
+    def displayShortestCycle(self) -> None:
+        """
+        Creates a weighted graph of vertices using pin locations and distances to create the shortest cycle through all points.
+        """
+        self.createCurrentGraph()
+        
 
     def resetPins(self) -> None:
-        """ Delete all pins from canvas and clean up any lines. """
+        """Delete all pins from canvas and clean up any lines."""
         for pin in list(self.locations):
             self.__removePin(None, pin)
         for line in self.lines:
             self.delete(line)
-    
 
 
 class PinFrame(ctk.CTkFrame):
@@ -247,16 +326,15 @@ class ContainerFrame(ctk.CTkFrame):
             self, text="Submit", command=self.submitLocations
         )
         self.submitButton.grid(row=2, column=0, padx=(5, 2), pady=5, sticky="sew")
-        self.resetButton = ctk.CTkButton(
-            self, text="Reset", command=self.resetPins
-        )
+        self.resetButton = ctk.CTkButton(self, text="Reset", command=self.resetPins)
         self.resetButton.grid(row=2, column=1, padx=(2, 5), pady=5, sticky="sew")
 
     def submitLocations(self):
-        self.pinCanvas.drawAllLines()
+        # self.pinCanvas.drawAllLines()
+        self.pinCanvas.displayShortestCycle()
 
     def resetPins(self):
-        """ Remove all pins from canvas"""
+        """Remove all pins from canvas"""
         self.pinCanvas.resetPins()
 
 
