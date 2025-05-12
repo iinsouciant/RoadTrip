@@ -8,7 +8,9 @@ class PinImage(ImageTk.PhotoImage):
     def __init__(self):
         pinPath = "./pin.png"
         self.pinSize = (20, 35)
-        super().__init__(Image.open(pinPath).resize(self.pinSize,Image.Resampling.NEAREST))
+        super().__init__(
+            Image.open(pinPath).resize(self.pinSize, Image.Resampling.NEAREST)
+        )
 
 
 class PinCanvas(ctk.CTkCanvas):
@@ -29,29 +31,41 @@ class PinCanvas(ctk.CTkCanvas):
         self.locations = {}
 
         self.pinCoords = ctk.CTkLabel(
-            self, text="X: None Y: None", font=font, text_color="black"
+            self,
+            text="X: None Y: None",
+            font=font,
+            text_color="gray30",
+            fg_color="#000001",
         )
-        self.pinCoords.pack(padx="10px", pady="10px", anchor="se")
+        self.pinCoords.grid(row=0, column=0, padx=10, pady=10, sticky="nw")
 
         def __createPinHelper(event):
-            return self.createPin((self.canvasx(event.x-(self.pinImg.pinSize[0]//2)),self.canvasy(event.y-(self.pinImg.pinSize[1]//2))))
-        self.bind("<Double-Button-1>", __createPinHelper, add='+')
-        
+            return self.createPin(
+                (
+                    self.canvasx(event.x - (self.pinImg.pinSize[0] // 2)),
+                    self.canvasy(event.y - (self.pinImg.pinSize[1] // 2)),
+                )
+            )
 
-    def __movePin(self, event: Event, pin):
+        self.bind("<Double-Button-1>", __createPinHelper, add="+")
+
+    def __movePin(self, event: Event, pin) -> None:
         newLoc = (
             self.canvasx(event.x - self.__dragOffset[0]),
             self.canvasy(event.y - self.__dragOffset[1]),
         )
-        
+
         # prevent overlap on drag by shifting from cursor
         while True:
             changed = False
             for pin2, loc2 in self.locations.items():
                 if loc2 == newLoc and pin != pin2:
                     offset = 5
-                    newLoc = (newLoc[0]+offset, newLoc[1]+offset)
-                    self.__dragOffset = (self.__dragOffset[0] + offset, self.__dragOffset[1] + offset)
+                    newLoc = (newLoc[0] + offset, newLoc[1] + offset)
+                    self.__dragOffset = (
+                        self.__dragOffset[0] + offset,
+                        self.__dragOffset[1] + offset,
+                    )
                     # self.locations[pin] = newLoc
                     changed = True
                     print("Cannot overlap pins!")
@@ -61,20 +75,25 @@ class PinCanvas(ctk.CTkCanvas):
         self.moveto(pin, newLoc[0], newLoc[1])
         self.locations[pin] = newLoc
 
-    def __setDragOffset(self, event: Event, pin):
+    def __setDragOffset(self, event: Event, pin) -> None:
         """Get mouse location offset from top left corner when they start dragging"""
         loc = self.locations[pin]
-        self.__dragOffset = (self.canvasx(event.x) - loc[0], self.canvasy(event.y) - loc[1])
+        self.__dragOffset = (
+            self.canvasx(event.x) - loc[0],
+            self.canvasy(event.y) - loc[1],
+        )
 
-    def __removePin(self, event: Event, pin):
-        print("remove this pin!")
+    def __removePin(self, event: Event, pin) -> None:
+        print("removing this pin!")
+        self.delete(pin)
+        self.locations.pop(pin, None)
 
-    def updateCoordText(self, event: Event):
+    def updateCoordText(self, event: Event) -> None:
         self.pinCoords.configure(
             text=f"X: {int(event.x - self.__dragOffset[0])} Y:{int(event.y - self.__dragOffset[1])}"
         )
 
-    def createPin(self, loc):
+    def createPin(self, loc) -> None:
         """
         Create pin image on canvas at given location, update location in dictionary, and bind the needed functions to the pin.
         """
@@ -82,15 +101,16 @@ class PinCanvas(ctk.CTkCanvas):
             if loc2 == loc:
                 print("Cannot overlap pins!")
                 return
-        pin = self.create_image(loc[0], loc[1], image=self.pinImg, anchor='nw')
+        pin = self.create_image(loc[0], loc[1], image=self.pinImg, anchor="nw")
         self.locations[pin] = loc
+
         # use default arguments in order to know which pin called this function since bind only does event
         def moveHandler(event, self=self, pin=pin):
             return self.__movePin(event, pin)
 
         def offsetHandler(event, self=self, pin=pin):
             return self.__setDragOffset(event, pin)
-        
+
         def removeHandler(event, self=self, pin=pin):
             return self.__removePin(event, pin)
 
@@ -105,23 +125,28 @@ class PinFrame(ctk.CTkFrame):
         """Frame just to color back area of container and round the corners"""
         super().__init__(master, **kwargs)
         self.configure(
-            fg_color="#a8c7a1", 
+            fg_color="#a8c7a1",
             bg_color="transparent",
             height=size[0],
             width=size[1],
-            
         )
         self.grid(row=0, column=2, padx=0, pady=0, rowspan=3, sticky="nsew")
-        
+
         # create another helper in case the frame is above canvas and takes the events instead of the canvas
         def __createPinHelper(event):
             return self.master.pinCanvas.createPin(
                 (
-                    self.master.pinCanvas.canvasx(event.x-(self.master.pinCanvas.pinImg.pinSize[0]//2)),
-                    self.master.pinCanvas.canvasy((event.y-(self.master.pinCanvas.pinImg.pinSize[1]//2)))
-            ))
-        self.bind("<Double-Button-1>", __createPinHelper, add='+')
-        
+                    self.master.pinCanvas.canvasx(
+                        event.x - (self.master.pinCanvas.pinImg.pinSize[0] // 2)
+                    ),
+                    self.master.pinCanvas.canvasy(
+                        (event.y - (self.master.pinCanvas.pinImg.pinSize[1] // 2))
+                    ),
+                )
+            )
+
+        self.bind("<Double-Button-1>", __createPinHelper, add="+")
+
 
 class ContainerFrame(ctk.CTkFrame):
     def __init__(self, master, font: tuple, **kwargs):
@@ -191,12 +216,13 @@ class RoadTripApp(ctk.CTk):
 
         self.title("Road Trip Route")
         self.geometry("1200x600")
-        self.configure(bg="#faf7f2",)
+        self.configure(
+            bg="#faf7f2",
+        )
         self.resizable(False, False)
         self.grid_rowconfigure(0, weight=1)  # configure grid system
         self.grid_columnconfigure(0, weight=1)
         self.container = ContainerFrame(self, font)
-
 
 
 def main():
