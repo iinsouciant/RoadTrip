@@ -137,6 +137,11 @@ class PinCanvas(ctk.CTkCanvas):
         self.tag_bind(pin, "<Button1-Motion>", moveHandler, add="+")
         self.tag_bind(pin, "<Button-3>", removeHandler, add="+")
 
+    def resetPins(self) -> None:
+        """ Delete all pins from canvas and clean up any lines. """
+        for pin in list(self.locations):
+            self.__removePin(None, pin)
+
 
 class PinFrame(ctk.CTkFrame):
     def __init__(self, master, size, **kwargs):
@@ -211,19 +216,20 @@ class ContainerFrame(ctk.CTkFrame):
         )
         # create submit and reset button
         self.submitButton = ctk.CTkButton(
-            self, text="Submit", command=self.submit_callback
+            self, text="Submit", command=self.submitLocations
         )
         self.submitButton.grid(row=2, column=0, padx=(5, 2), pady=5, sticky="sew")
         self.resetButton = ctk.CTkButton(
-            self, text="Reset", command=self.reset_callback
+            self, text="Reset", command=self.resetPins
         )
         self.resetButton.grid(row=2, column=1, padx=(2, 5), pady=5, sticky="sew")
 
-    def submit_callback(self):
+    def submitLocations(self):
         print("submitted")
 
-    def reset_callback(self):
-        print("reset")
+    def resetPins(self):
+        """ Remove all pins from canvas"""
+        self.pinCanvas.resetPins()
 
 
 class RoadTripApp(ctk.CTk):
