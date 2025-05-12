@@ -29,6 +29,7 @@ class PinCanvas(ctk.CTkCanvas):
         # Pin Stuff
         self.pinImg = PinImage()
         self.locations = {}
+        self.lines = []
 
         self.pinCoords = ctk.CTkLabel(
             self,
@@ -100,7 +101,6 @@ class PinCanvas(ctk.CTkCanvas):
         )
 
     def __removePin(self, event: Event, pin) -> None:
-        print("removing this pin!")
         self.delete(pin)
         self.locations.pop(pin, None)
 
@@ -138,10 +138,23 @@ class PinCanvas(ctk.CTkCanvas):
         self.tag_bind(pin, "<Button1-Motion>", moveHandler, add="+")
         self.tag_bind(pin, "<Button-3>", removeHandler, add="+")
 
+    def drawAllLines(self):
+        xOffset = self.pinImg.pinSize[0]//2
+        yOffset = self.pinImg.pinSize[1]//2
+        for line in self.lines:
+            self.delete(line)
+        for pin, loc in self.locations.items():
+            for pin2, loc2 in self.locations.items():
+                if pin != pin2:
+                    self.lines.append(self.create_line(loc[0]+xOffset, loc[1]+yOffset, loc2[0]+xOffset, loc2[1]+yOffset, width=2, fill="#faf7f2"))
+
     def resetPins(self) -> None:
         """ Delete all pins from canvas and clean up any lines. """
         for pin in list(self.locations):
             self.__removePin(None, pin)
+        for line in self.lines:
+            self.delete(line)
+    
 
 
 class PinFrame(ctk.CTkFrame):
@@ -226,7 +239,7 @@ class ContainerFrame(ctk.CTkFrame):
         self.resetButton.grid(row=2, column=1, padx=(2, 5), pady=5, sticky="sew")
 
     def submitLocations(self):
-        print("submitted")
+        self.pinCanvas.drawAllLines()
 
     def resetPins(self):
         """ Remove all pins from canvas"""
