@@ -37,6 +37,13 @@ class Graph:
             self.edges.append((weight, vertex1, vertex2))
         else:
             raise ValueError("Both vertices must exist in the graph.")
+        
+    def removeEdge(self, vertex1, vertex2):
+        """ Remove the first edge found that contains the two vertices. """
+        raise NotImplementedError("TODO")
+        if vertex1 in self.adj_list and vertex2 in self.adj_list:
+            edge = None
+            self.adj_list.popitem((vertex1, [edge]))
 
     def display(self):
         # Display adjacency list
