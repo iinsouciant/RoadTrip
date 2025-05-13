@@ -14,17 +14,19 @@ from time import time
 
 type Vertex = int
 
+# TODO output cost and route together when returning output
 
 class DisplayGraph(Graph):
     def __init__(self, canvas: "PinCanvas"):
         super().__init__()
         self.canvas: PinCanvas = canvas
 
-    def drawEdges(self, edges: None | list[tuple[float, int, int]] = None):
+    def drawEdges(self, edges: None | list[tuple[float, int, int]] = None, clear: bool = True, fill:str = "#faf7f2"):
         xOffset = self.canvas.pinImg.pinSize[0] // 2
         yOffset = self.canvas.pinImg.pinSize[1] // 2
-        for line in self.canvas.lines:
-            self.canvas.delete(line)
+        if clear:
+            for line in self.canvas.lines:
+                self.canvas.delete(line)
 
         if not edges:
             edges = self.edges
@@ -39,7 +41,7 @@ class DisplayGraph(Graph):
                     loc2[0] + xOffset,
                     loc2[1] + yOffset,
                     width=2,
-                    fill="#faf7f2",
+                    fill=fill,
                 )
             )
 
@@ -65,6 +67,14 @@ class DisplayGraph(Graph):
         return cost
     
     def nearestNeighborRoute(self, startVertex: int|None = None) -> list["Vertex"]:
+        """
+        Get a guess at the optimal route by going to the least costly connected vector.
+        Time complexity: O(n+n(nlogn)+n^2+n) -> O(n^2(logn+1))
+        - n to put each vertex in set
+        - n(nlogn) to merge sort list of edges to all other vertices for all n vertices
+        - n^2 to loop through every vertex and check if not already visited
+        - n to get the distance from last in route to start vertex
+        """
         if not startVertex:
             startVertex = self.canvas.getStartPin()
         
@@ -99,13 +109,21 @@ class DisplayGraph(Graph):
                 break
         dur = time() - startTime
         print(f"Nearest neighbor distance: {distance} u\nDuration: {dur:9.9f} s")
+        print("-"*15+'\n')
         return route
     
     # def nearestNeighborGraph(self) -> None:
     #     """ Removes extra edges of the current graph to create one cycle using nearest neighbors."""
 
     def bruteForceRoute(self, startVertex: int|None = None) -> Sequence["Vertex"]:
-        """Brute force all permutations of paths to compare performance vs efficiency"""
+        """
+        Get the shortest cycle by checking all permutations of paths to compare performance vs efficiency.
+        Time complexity: O((n-1)!/2)
+        - n for each vertex
+        - n-1 due to excluding the start vertex when creating the permutation
+        - (n-1)! for all permutations
+        - dvided by 2 by skipping all reverse permutations
+        """
         distance = float("inf")
         route = []
         if not startVertex:
@@ -119,6 +137,11 @@ class DisplayGraph(Graph):
         intermediaryVertices = set(self.adj_list)
         intermediaryVertices.remove(startVertex)
         for r in permutations(intermediaryVertices):
+            # skip reverse routes
+            # from https://stackoverflow.com/questions/960557/how-to-generate-permutations-of-a-list-without-reverse-duplicates-in-python-us
+            # this extended slice reverses the permutation and uses comparison to make sure it is less, so it gets rid of half of perms
+            if r <= r[::-1]:
+                continue
             # construct cycle from intermediary route and loop back to start
             newRoute = [startVertex]
             for v in r:
@@ -132,6 +155,7 @@ class DisplayGraph(Graph):
 
         dur = time() - startTime
         print(f"Brute force distance: {distance} u\nDuration: {dur:9.9f} s")
+        print("-"*15+'\n')
         return route
 
 
@@ -367,15 +391,7 @@ class PinCanvas(ctk.CTkCanvas):
                     distance(self.locations[pins[i]], self.locations[pins[j]]),
                 )
 
-        self.graph.drawEdges()
-
-    def displayShortestCycle(self) -> None:
-        """
-        Creates a weighted graph of vertices using pin locations and distances to create the shortest cycle through all points.
-        """
-        self.createCurrentGraph()
-        nnRoute = self.graph.nearestNeighborRoute()
-        self.drawRoute(nnRoute)
+        # self.graph.drawEdges()
 
     def resetPins(self) -> None:
         """Delete all pins from canvas and clean up any lines."""
@@ -465,7 +481,7 @@ class ContainerFrame(ctk.CTkFrame):
         )
         self.submitButton.grid(row=2, column=0, padx=(5, 2), pady=5, sticky="sew")
 
-        self.SOLUTIONS = ["Nearest Neigbor", "Brute Force", "TBD"]
+        self.SOLUTIONS = ["Nearest Neigbor", "Brute Force", "Compare"]
         self.solutionComboBox = ctk.CTkComboBox(
             self,
             values=self.SOLUTIONS,
@@ -492,8 +508,8 @@ class ContainerFrame(ctk.CTkFrame):
         elif self.choice == self.SOLUTIONS[1]:
             route = self.pinCanvas.graph.bruteForceRoute()
         elif True:
-            route = list(self.pinCanvas.graph.adj_list)
-            route.append(route[0])
+            route1 = self.pinCanvas.graph.bruteForceRoute()
+            route2 = self.pinCanvas.graph.nearestNeighborRoute()
         self.pinCanvas.drawRoute(route)
         
 
@@ -520,7 +536,6 @@ class RoadTripApp(ctk.CTk):
 
 
 def main():
-    print("Hello from roadtrip!")
     window = RoadTripApp()
     window.mainloop()
 
