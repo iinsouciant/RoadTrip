@@ -1,10 +1,18 @@
-from tkinter import PhotoImage, Tk, Label, Event
+from tkinter import Event
 from PIL import Image, ImageTk
 import customtkinter as ctk
 from pywinstyles import set_opacity
-from Graph import Graph, Vertex
+
+from Graph import Graph
 import random
 from math import sqrt
+from itertools import permutations
+
+from typing import Sequence
+from time import time
+
+
+type Vertex = int
 
 
 class DisplayGraph(Graph):
@@ -35,16 +43,32 @@ class DisplayGraph(Graph):
                 )
             )
 
-    def getRouteCost(self) -> float:
+    def getRouteCost(self, vertices: Sequence["Vertex"]|None = None) -> float:
         """Sum total cost for all existing edges (the total distance travelled w/ current route)"""
         cost = 0
-        for edge in self.edges:
-            cost += edge[0]
+        if not vertices:
+            for edge in self.edges:
+                cost += edge[0]
+            return cost
+        
+        # keys = set(self.adj_list)
+        # if vertices[0] not in keys:
+        #     raise Exception("Invalid vertex in provided route.")
+        
+        for i in range(1, len(vertices)):
+            # if vertices[i] not in keys:
+            #     raise Exception("Invalid vertex in provided route.")
+            for adjVert, weight in self.adj_list[vertices[i]]:
+                if adjVert == vertices[i-1]:
+                    cost += weight
+                    break
         return cost
     
     def nearestNeighborRoute(self, startVertex: int|None = None) -> list["Vertex"]:
         if not startVertex:
             startVertex = self.canvas.getStartPin()
+        
+        startTime = time()
         unvisited = set(vert for vert in list(self.adj_list))
         unvisited.remove(startVertex)
         route = [startVertex]
@@ -73,12 +97,42 @@ class DisplayGraph(Graph):
             if (v1 == route[-2] or v2 == route[-2]) and (v1 == route[-1] or v2 == route[-1]):
                 distance += w
                 break
-        print(f"Nearest neighbor distance: {distance}")
+        dur = time() - startTime
+        print(f"Nearest neighbor distance: {distance} u\nDuration: {dur:9.9f} s")
         return route
+    
+    # def nearestNeighborGraph(self) -> None:
+    #     """ Removes extra edges of the current graph to create one cycle using nearest neighbors."""
 
-    def bruteForceRoute(self):
+    def bruteForceRoute(self, startVertex: int|None = None) -> Sequence["Vertex"]:
         """Brute force all permutations of paths to compare performance vs efficiency"""
-        pass
+        distance = float("inf")
+        route = []
+        if not startVertex:
+            startVertex = self.canvas.getStartPin()
+
+        if len(self.adj_list) <= 0:
+            raise Exception("Missing vertices to construct path")
+        
+        startTime = time()
+        # check all permutations of routes
+        intermediaryVertices = set(self.adj_list)
+        intermediaryVertices.remove(startVertex)
+        for r in permutations(intermediaryVertices):
+            # construct cycle from intermediary route and loop back to start
+            newRoute = [startVertex]
+            for v in r:
+                newRoute.append(v)
+            newRoute.append(startVertex)
+            
+            newDistance = self.getRouteCost(newRoute)
+            if newDistance < distance:
+                route = newRoute
+                distance = newDistance
+
+        dur = time() - startTime
+        print(f"Brute force distance: {distance} u\nDuration: {dur:9.9f} s")
+        return route
 
 
 class PinImage(ImageTk.PhotoImage):
@@ -268,7 +322,7 @@ class PinCanvas(ctk.CTkCanvas):
                     )
         self.raisePins()
 
-    def drawRoute(self, pins:list[int]) -> None:
+    def drawRoute(self, pins:list["Vertex"]) -> None:
         xOffset = self.pinImg.pinSize[0] // 2
         yOffset = self.pinImg.pinSize[1] // 2
         for line in self.lines:
@@ -314,11 +368,6 @@ class PinCanvas(ctk.CTkCanvas):
                 )
 
         self.graph.drawEdges()
-    
-    def displayNearestNeighborSolution(self) -> None:
-        self.createCurrentGraph()
-        nnRoute = self.graph.nearestNeighborRoute()
-        self.drawRoute(nnRoute)
 
     def displayShortestCycle(self) -> None:
         """
@@ -437,14 +486,15 @@ class ContainerFrame(ctk.CTkFrame):
         self.choice = choice
 
     def submitLocations(self):
+        self.pinCanvas.createCurrentGraph()
         if self.choice == self.SOLUTIONS[0]:
-            self.pinCanvas.displayNearestNeighborSolution()
-            return
+            route = self.pinCanvas.graph.nearestNeighborRoute()
         elif self.choice == self.SOLUTIONS[1]:
-            self.pinCanvas.displayShortestCycle()
+            route = self.pinCanvas.graph.bruteForceRoute()
         elif True:
-            self.pinCanvas.drawAllLines()
-            return
+            route = list(self.pinCanvas.graph.adj_list)
+            route.append(route[0])
+        self.pinCanvas.drawRoute(route)
         
 
     def resetPins(self):
