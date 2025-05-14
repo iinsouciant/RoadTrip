@@ -13,8 +13,12 @@ class Graph:
 
     def __init__(self):
         # Dictionary to store adjacency list with weights
-        self.adj_list: dict["Vertex", list[list["Vertex",float]]] = {}  # nodes = landmarks
-        self.edges:list[tuple[float, "Vertex", "Vertex"]] = []  # edges = roads in between the landmarks
+        self.adj_list: dict[
+            "Vertex", list[list["Vertex", float]]
+        ] = {}  # nodes = landmarks
+        self.edges: list[
+            tuple[float, "Vertex", "Vertex"]
+        ] = []  # edges = roads in between the landmarks
 
     def __str__(self) -> str:
         result = ""
@@ -24,7 +28,7 @@ class Graph:
 
     def __getitem__(self, vertex: Vertex) -> list[list]:
         return self.adj_list[vertex]
-    
+
     def __iter__(self) -> Vertex:
         for v in self.adj_list:
             yield v
@@ -50,9 +54,9 @@ class Graph:
             self.edges.append((weight, vertex1, vertex2))
         else:
             raise ValueError("Both vertices must exist in the graph.")
-        
+
     def removeEdge(self, vertex1, vertex2):
-        """ Remove the first edge found that contains the two vertices. """
+        """Remove the first edge found that contains the two vertices."""
         raise NotImplementedError("TODO")
         if vertex1 in self.adj_list and vertex2 in self.adj_list:
             edge = None
@@ -157,13 +161,13 @@ class Graph:
             currentVertex = predecessors[currentVertex]
 
         return path
-    
+
     def kruskal(self) -> "Graph":
         """
         Kruskal's algorithm to find the minimum spanning tree of the graph.
         """
         # Sort edges by weight
-        self.edges.sort(key= lambda e: e[0])
+        self.edges.sort(key=lambda e: e[0])
         mst = Graph()
         # disjoint set of vertices to detect cycles. contains connections between vertices if they exist
         disjointSet = []
@@ -180,7 +184,7 @@ class Graph:
                     vert1Set = mySet
                 if vertex2 in mySet:
                     vert2Set = mySet
-            
+
             # if there is not already an edge between these two
             if vert1Set is not vert2Set:
                 mst.addEdge(vertex1, vertex2, weight)
@@ -190,7 +194,7 @@ class Graph:
                 disjointSet.append(tempSet)
 
         return mst
-    
+
 
 if __name__ == "__main__":
     # Sample graph with 5 vertices all interconnected.
@@ -202,22 +206,22 @@ if __name__ == "__main__":
     pinGraph.addVertex("Harvard Square")
     pinGraph.addVertex("Harvard Museum of Natural History & Arts")
     # edges
-    pinGraph.addEdge("Grand Library of All Books", "Harvard University",1)
-    pinGraph.addEdge("Grand Library of All Books", "Charles River",2)
-    pinGraph.addEdge("Grand Library of All Books", "Harvard Square",3)
+    pinGraph.addEdge("Grand Library of All Books", "Harvard University", 1)
+    pinGraph.addEdge("Grand Library of All Books", "Charles River", 2)
+    pinGraph.addEdge("Grand Library of All Books", "Harvard Square", 3)
     pinGraph.addEdge(
-        "Grand Library of All Books", "Harvard Museum of Natural History & Arts",2
+        "Grand Library of All Books", "Harvard Museum of Natural History & Arts", 2
     )
 
-    pinGraph.addEdge("Harvard University", "Charles River",2)
-    pinGraph.addEdge("Harvard University", "Harvard Square",3)
+    pinGraph.addEdge("Harvard University", "Charles River", 2)
+    pinGraph.addEdge("Harvard University", "Harvard Square", 3)
     pinGraph.addEdge(
-        "Harvard University", "Harvard Museum of Natural History & Arts",2
+        "Harvard University", "Harvard Museum of Natural History & Arts", 2
     )
 
-    pinGraph.addEdge("Charles River", "Harvard Square",3)
-    pinGraph.addEdge("Charles River", "Harvard Museum of Natural History & Arts",1)
-    
-    pinGraph.addEdge("Harvard Square", "Harvard Museum of Natural History & Arts",4)
+    pinGraph.addEdge("Charles River", "Harvard Square", 3)
+    pinGraph.addEdge("Charles River", "Harvard Museum of Natural History & Arts", 1)
+
+    pinGraph.addEdge("Harvard Square", "Harvard Museum of Natural History & Arts", 4)
 
     print(pinGraph.kruskal())
