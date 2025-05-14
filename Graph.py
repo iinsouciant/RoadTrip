@@ -22,7 +22,7 @@ class Graph:
             result += f"Vertex ({vertex}): {self.adj_list[vertex]}\n"
         return result
 
-    def __getattribute__(self, vertex: Vertex) -> list[list]:
+    def __getitem__(self, vertex: Vertex) -> list[list]:
         return self.adj_list[vertex]
     
     def __iter__(self) -> Vertex:
