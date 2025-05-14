@@ -152,6 +152,7 @@ class DisplayGraph(Graph):
 
         MST is lower bound because if you delete an edge in the cycle, now have a spanning tree which must be at least the cost of the MST.
         """
+        # TODO figure out how to actually get sequential route to make methods more uniform
         mst = self.kruskal()
         route = []
         
@@ -555,24 +556,24 @@ class ContainerFrame(ctk.CTkFrame):
         if self.choice == self.SOLUTIONS[0]:
             route, distance = self.pinCanvas.graph.nearestNeighborRoute()
             dur = time()-startTime
-            print(f"Nearest neighbor distance: {distance} u\nDuration: {dur:9.9f} s")
+            print(f"Nearest neighbor distance: {distance} u\nDuration: {dur:9.9f} s\nRoute: {route}")
             print("-"*15+'\n')
         elif self.choice == self.SOLUTIONS[1]:
             route, distance = self.pinCanvas.graph.bruteForceRoute()
             dur = time()-startTime
-            print(f"Brute force distance: {distance} u\nDuration: {dur:9.9f} s")
+            print(f"Brute force distance: {distance} u\nDuration: {dur:9.9f} s\nRoute: {route}")
             print("-"*15+'\n')
         elif self.choice == self.SOLUTIONS[2]:
             route1, distance1 = self.pinCanvas.graph.nearestNeighborRoute()
             dur1 = time()-startTime
-            print(f"Nearest neighbor distance: {distance1} u\nDuration: {dur1:9.9f} s")
+            print(f"Nearest neighbor distance: {distance1} u\nDuration: {dur1:9.9f} s\nRoute: {route1}")
             print("-"*15+'\n')
             self.pinCanvas.drawRoute(route1)
 
             startTime = time()
             route2, distance2 = self.pinCanvas.graph.drawLowerBoundRoute(clear=False, fill="gray30", offset=(12,19))
             dur2 = time()-startTime
-            print(f"Lower bound MST distance: {distance2} u\nDuration: {dur2:9.9f} s")
+            print(f"Lower bound MST distance: {distance2} u\nDuration: {dur2:9.9f} s\nRoute: {route2}")
             print("-"*15+'\n')
 
             print(f"Time taken by NN solution: {(dur1*100/dur2):9.3f}% of lower bound MST")
@@ -582,14 +583,14 @@ class ContainerFrame(ctk.CTkFrame):
         elif True:
             route1, distance1 = self.pinCanvas.graph.nearestNeighborRoute()
             dur1 = time()-startTime
-            print(f"Nearest neighbor distance: {distance1} u\nDuration: {dur1:9.9f} s")
+            print(f"Nearest neighbor distance: {distance1} u\nDuration: {dur1:9.9f} s\nRoute: {route1}")
             print("-"*15+'\n')
             self.pinCanvas.drawRoute(route1)
 
             startTime = time()
             route2, distance2 = self.pinCanvas.graph.bruteForceRoute()
             dur2 = time()-startTime
-            print(f"Brute force distance: {distance2} u\nDuration: {dur2:9.9f} s")
+            print(f"Brute force distance: {distance2} u\nDuration: {dur2:9.9f} s\nRoute: {route2}")
             print("-"*15+'\n')
             self.pinCanvas.drawRoute(route2, clear=False, fill="gray30", offset=(12,19))
 
