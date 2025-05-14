@@ -14,12 +14,34 @@ from time import time
 
 type Vertex = int
 
+
 class DisplayGraph(Graph):
     def __init__(self, canvas: "PinCanvas"):
         super().__init__()
         self.canvas: PinCanvas = canvas
+        self.mst: Graph | None = None
 
-    def drawEdges(self, edges: None | list[tuple[float, int, int]] = None, clear: bool = True, fill:str = "#faf7f2"):
+    def getMST(self) -> Graph:
+        if not self.mst:
+            return self.setMST()
+        return self.mst
+
+    def setMST(self, mst: Graph | None = None) -> Graph:
+        if not mst:
+            self.mst = self.kruskal()
+            return self.mst
+        elif type(mst) is Graph:
+            self.mst = mst
+            return mst
+        else:
+            raise TypeError(f"{type(mst)} is not None or Graph")
+
+    def drawEdges(
+        self,
+        edges: None | list[tuple[float, int, int]] = None,
+        clear: bool = True,
+        fill: str = "#faf7f2",
+    ):
         xOffset = self.canvas.pinImg.pinSize[0] // 2
         yOffset = self.canvas.pinImg.pinSize[1] // 2
         if clear:
@@ -43,28 +65,30 @@ class DisplayGraph(Graph):
                 )
             )
 
-    def getRouteCost(self, vertices: Sequence["Vertex"]|None = None) -> float:
+    def getRouteCost(self, vertices: Sequence["Vertex"] | None = None) -> float:
         """Sum total cost for all existing edges (the total distance travelled w/ current route)"""
         cost = 0
         if not vertices:
             for edge in self.edges:
                 cost += edge[0]
             return cost
-        
+
         # keys = set(self.adj_list)
         # if vertices[0] not in keys:
         #     raise Exception("Invalid vertex in provided route.")
-        
+
         for i in range(1, len(vertices)):
             # if vertices[i] not in keys:
             #     raise Exception("Invalid vertex in provided route.")
             for adjVert, weight in self.adj_list[vertices[i]]:
-                if adjVert == vertices[i-1]:
+                if adjVert == vertices[i - 1]:
                     cost += weight
                     break
         return cost
-    
-    def nearestNeighborRoute(self, startVertex: int|None = None) -> tuple[list["Vertex"], float]:
+
+    def nearestNeighborRoute(
+        self, startVertex: int | None = None
+    ) -> tuple[list["Vertex"], float]:
         """
         Get a guess at the optimal route by going to the least costly connected vector.
         Time complexity: O(n+n(nlogn)+n^2+n) -> O(n^2(logn+1))
@@ -75,14 +99,14 @@ class DisplayGraph(Graph):
         """
         if not startVertex:
             startVertex = self.canvas.getStartPin()
-        
+
         unvisited = set(vert for vert in list(self.adj_list))
         unvisited.remove(startVertex)
         route = [startVertex]
         distance = 0
 
         for vert in list(self.adj_list):
-            self.adj_list[vert].sort(key= lambda edge: edge[1])
+            self.adj_list[vert].sort(key=lambda edge: edge[1])
 
         # i think i can make this more efficient... how? use sets to see if existing visit?
         while unvisited:
@@ -99,15 +123,14 @@ class DisplayGraph(Graph):
         route.append(startVertex)
         for edge in self.adj_list[startVertex]:
             v2, w = edge
-            if (v2 == route[-2]):
+            if v2 == route[-2]:
                 distance += w
                 break
         return route, distance
-    
-    # def nearestNeighborGraph(self) -> None:
-    #     """ Removes extra edges of the current graph to create one cycle using nearest neighbors."""
 
-    def bruteForceRoute(self, startVertex: int|None = None) -> tuple[list["Vertex"], float]:
+    def bruteForceRoute(
+        self, startVertex: int | None = None
+    ) -> tuple[list["Vertex"], float]:
         """
         Get the shortest cycle by checking all permutations of paths to compare performance vs efficiency.
         Time complexity: O((n-1)!/2)
@@ -123,7 +146,7 @@ class DisplayGraph(Graph):
 
         if len(self.adj_list) <= 0:
             raise Exception("Missing vertices to construct path")
-        
+
         # check all permutations of routes
         intermediaryVertices = set(self.adj_list)
         intermediaryVertices.remove(startVertex)
@@ -138,24 +161,29 @@ class DisplayGraph(Graph):
             for v in r:
                 newRoute.append(v)
             newRoute.append(startVertex)
-            
+
             newDistance = self.getRouteCost(newRoute)
             if newDistance < distance:
                 route = newRoute
                 distance = newDistance
 
         return route, distance
-    
-    def drawLowerBoundRoute(self, clear: bool = True, fill:str = "#faf7f2", offset:int|tuple[int, int]|None = None) -> tuple[list["Vertex"], float]:
+
+    def drawLowerBoundRoute(
+        self,
+        clear: bool = True,
+        fill: str = "#faf7f2",
+        offset: int | tuple[int, int] | None = None,
+    ) -> tuple[list["Vertex"], float]:
         """
         Finds the lower bound of the optimal solutions using a MST in order to save time attempting to calculate it through brute force and draws it.
 
         MST is lower bound because if you delete an edge in the cycle, now have a spanning tree which must be at least the cost of the MST.
         """
         # TODO figure out how to actually get sequential route to make methods more uniform
-        mst = self.kruskal()
+        mst = self.getMST()
         route = []
-        
+
         if type(offset) is int:
             xOffset = offset
             yOffset = offset
@@ -179,7 +207,6 @@ class DisplayGraph(Graph):
                     loc2[1] + yOffset,
                     width=2,
                     fill=fill,
-
                 )
             )
             self.canvas.tag_lower(self.canvas.lines[-1])
@@ -189,6 +216,21 @@ class DisplayGraph(Graph):
             distance += edge[0]
 
         return route, distance
+
+    def christofidesRoute(self):
+        """
+        Modifying of MST to become 1 cycle to approach optimal solution.
+        Written based off of explanation from here: https://youtu.be/GiDsjIBOVoA?t=726
+        """
+        mst = self.getMST()
+        # get odd degree vertices in MST
+        oddVertices = []
+        for vertex in mst:
+            if len(mst[vertex]) % 2:
+                oddVertices.append(vertex)
+        for v in oddVertices:
+            print("hi")
+        # pair up odd degree vertices w/ min weight to even out degrees
 
 
 class PinImage(ImageTk.PhotoImage):
@@ -375,7 +417,13 @@ class PinCanvas(ctk.CTkCanvas):
                     )
         self.raisePins()
 
-    def drawRoute(self, pins:list["Vertex"], clear: bool = True, fill:str = "#faf7f2", offset:int|tuple[int, int]|None = None) -> None:
+    def drawRoute(
+        self,
+        pins: list["Vertex"],
+        clear: bool = True,
+        fill: str = "#faf7f2",
+        offset: int | tuple[int, int] | None = None,
+    ) -> None:
         """
         Draw lines between vertices given a list of ordered vertices to traverse through.
         clear: delete all existing lines before drawing new ones.
@@ -399,8 +447,8 @@ class PinCanvas(ctk.CTkCanvas):
             for line in self.lines:
                 self.delete(line)
 
-        for i in range(1,len(pins)):
-            loc1 = self.locations[pins[i-1]]
+        for i in range(1, len(pins)):
+            loc1 = self.locations[pins[i - 1]]
             loc2 = self.locations[pins[i]]
             self.lines.append(
                 self.create_line(
@@ -410,7 +458,6 @@ class PinCanvas(ctk.CTkCanvas):
                     loc2[1] + yOffset,
                     width=2,
                     fill=fill,
-
                 )
             )
             self.tag_lower(self.lines[-1])
@@ -523,28 +570,42 @@ class ContainerFrame(ctk.CTkFrame):
             row=1, column=0, padx=10, pady=(0, 10), columnspan=3, sticky="new"
         )
 
-        buttonFont = (font[0], font[1]//1.5)
+        buttonFont = (font[0], font[1] // 1.5)
         # create submit and reset button
         self.submitButton = ctk.CTkButton(
-            self, text="Submit", command=self.submitLocations, font=buttonFont,
+            self,
+            text="Submit",
+            command=self.submitLocations,
+            font=buttonFont,
         )
         self.submitButton.grid(row=2, column=0, padx=(5, 2), pady=5, sticky="sew")
 
-        self.SOLUTIONS = ["Nearest Neigbor", "Brute Force", "Compare to MST Lower Bound", "Compare to Brute Force"]
+        self.SOLUTIONS = [
+            "Nearest Neigbor",
+            "Brute Force",
+            "Minimum Spanning Tree",
+            "Compare to MST Lower Bound",
+            "Compare to Brute Force",
+        ]
         self.solutionComboBox = ctk.CTkComboBox(
             self,
             values=self.SOLUTIONS,
             font=buttonFont,
             command=self.solutionChoice,
-            button_hover_color=('#36719F', '#144870'),
-            button_color=('#3B8ED0', '#1F6AA5'),
+            button_hover_color=("#36719F", "#144870"),
+            button_color=("#3B8ED0", "#1F6AA5"),
             state="readonly",
         )
         self.solutionComboBox.grid(row=2, column=1, padx=2, pady=5, sticky="sew")
         self.solutionComboBox.set(self.SOLUTIONS[0])
         self.choice = self.solutionComboBox.get()
 
-        self.resetButton = ctk.CTkButton(self, text="Reset", command=self.resetPins, font=buttonFont,)
+        self.resetButton = ctk.CTkButton(
+            self,
+            text="Reset",
+            command=self.resetPins,
+            font=buttonFont,
+        )
         self.resetButton.grid(row=2, column=2, padx=(2, 5), pady=5, sticky="sew")
 
     def solutionChoice(self, choice):
@@ -554,52 +615,87 @@ class ContainerFrame(ctk.CTkFrame):
         self.pinCanvas.createCurrentGraph()
         startTime = time()
         if self.choice == self.SOLUTIONS[0]:
+            # Nearest Neighbor
             route, distance = self.pinCanvas.graph.nearestNeighborRoute()
-            dur = time()-startTime
-            print(f"Nearest neighbor distance: {distance} u\nDuration: {dur:9.9f} s\nRoute: {route}")
-            print("-"*15+'\n')
+            dur = time() - startTime
+            print(
+                f"Nearest neighbor distance: {distance} u\nDuration: {dur:9.9f} s\nRoute: {route}"
+            )
+            print("-" * 15 + "\n")
         elif self.choice == self.SOLUTIONS[1]:
+            # Brute force
             route, distance = self.pinCanvas.graph.bruteForceRoute()
-            dur = time()-startTime
-            print(f"Brute force distance: {distance} u\nDuration: {dur:9.9f} s\nRoute: {route}")
-            print("-"*15+'\n')
+            dur = time() - startTime
+            print(
+                f"Brute force distance: {distance} u\nDuration: {dur:9.9f} s\nRoute: {route}"
+            )
+            print("-" * 15 + "\n")
         elif self.choice == self.SOLUTIONS[2]:
+            # MST
+            route, distance = self.pinCanvas.graph.drawLowerBoundRoute()
+            dur = time() - startTime
+            print(f"MST distance: {distance} u\nDuration: {dur:9.9f} s\nRoute: {route}")
+            print("-" * 15 + "\n")
+            self.pinCanvas.graph.christofidesRoute()
+            return
+        elif self.choice == self.SOLUTIONS[3]:
+            # Compare NN and MST
             route1, distance1 = self.pinCanvas.graph.nearestNeighborRoute()
-            dur1 = time()-startTime
-            print(f"Nearest neighbor distance: {distance1} u\nDuration: {dur1:9.9f} s\nRoute: {route1}")
-            print("-"*15+'\n')
+            dur1 = time() - startTime
+            print(
+                f"Nearest neighbor distance: {distance1} u\nDuration: {dur1:9.9f} s\nRoute: {route1}"
+            )
+            print("-" * 15 + "\n")
             self.pinCanvas.drawRoute(route1)
 
             startTime = time()
-            route2, distance2 = self.pinCanvas.graph.drawLowerBoundRoute(clear=False, fill="gray30", offset=(12,19))
-            dur2 = time()-startTime
-            print(f"Lower bound MST distance: {distance2} u\nDuration: {dur2:9.9f} s\nRoute: {route2}")
-            print("-"*15+'\n')
+            route2, distance2 = self.pinCanvas.graph.drawLowerBoundRoute(
+                clear=False, fill="gray30", offset=(12, 19)
+            )
+            dur2 = time() - startTime
+            print(
+                f"Lower bound MST distance: {distance2} u\nDuration: {dur2:9.9f} s\nRoute: {route2}"
+            )
+            print("-" * 15 + "\n")
 
-            print(f"Time taken by NN solution: {(dur1*100/dur2):9.3f}% of lower bound MST")
-            print(f"Cost of route by NN solution: {(distance1*100/distance2)-100:9.3f}% more than lower bound MST")
-            print("-"*15+'\n')
+            print(
+                f"Time taken by NN solution: {(dur1 * 100 / dur2):9.3f}% of lower bound MST"
+            )
+            print(
+                f"Cost of route by NN solution: {(distance1 * 100 / distance2) - 100:9.3f}% more than lower bound MST"
+            )
+            print("-" * 15 + "\n")
             return
         elif True:
+            # Compare NN and brute force
             route1, distance1 = self.pinCanvas.graph.nearestNeighborRoute()
-            dur1 = time()-startTime
-            print(f"Nearest neighbor distance: {distance1} u\nDuration: {dur1:9.9f} s\nRoute: {route1}")
-            print("-"*15+'\n')
+            dur1 = time() - startTime
+            print(
+                f"Nearest neighbor distance: {distance1} u\nDuration: {dur1:9.9f} s\nRoute: {route1}"
+            )
+            print("-" * 15 + "\n")
             self.pinCanvas.drawRoute(route1)
 
             startTime = time()
             route2, distance2 = self.pinCanvas.graph.bruteForceRoute()
-            dur2 = time()-startTime
-            print(f"Brute force distance: {distance2} u\nDuration: {dur2:9.9f} s\nRoute: {route2}")
-            print("-"*15+'\n')
-            self.pinCanvas.drawRoute(route2, clear=False, fill="gray30", offset=(12,19))
+            dur2 = time() - startTime
+            print(
+                f"Brute force distance: {distance2} u\nDuration: {dur2:9.9f} s\nRoute: {route2}"
+            )
+            print("-" * 15 + "\n")
+            self.pinCanvas.drawRoute(
+                route2, clear=False, fill="gray30", offset=(12, 19)
+            )
 
-            print(f"Time taken by NN solution: {(dur1*100/dur2):9.3f}% of brute force")
-            print(f"Cost of route by NN solution: {(distance1*100/distance2)-100:9.3f}% more than brute force")
-            print("-"*15+'\n')
+            print(
+                f"Time taken by NN solution: {(dur1 * 100 / dur2):9.3f}% of brute force"
+            )
+            print(
+                f"Cost of route by NN solution: {(distance1 * 100 / distance2) - 100:9.3f}% more than brute force"
+            )
+            print("-" * 15 + "\n")
             return
         self.pinCanvas.drawRoute(route)
-        
 
     def resetPins(self):
         """Remove all pins from canvas"""
