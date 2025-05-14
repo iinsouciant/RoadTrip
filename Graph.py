@@ -1,4 +1,4 @@
-"""Graph class to handle roatrip routing for shortest cycle in a weighted graph"""
+"""Graph class to handle roatrip routing using a weighted graph"""
 
 from heapq import heappush, heappop
 from typing import Any
@@ -15,6 +15,12 @@ class Graph:
         # Dictionary to store adjacency list with weights
         self.adj_list: dict["Vertex", list[list["Vertex",float]]] = {}  # nodes = landmarks
         self.edges:list[tuple[float, "Vertex", "Vertex"]] = []  # edges = roads in between the landmarks
+
+    def __str__(self) -> str:
+        result = ""
+        for vertex in self.adj_list:
+            result += f"Vertex ({vertex}): {self.adj_list[vertex]}\n"
+        return result
 
     def addVertex(self, vertex):
         """
@@ -128,12 +134,6 @@ class Graph:
         shortestDistance = dists[endVert]
         predecessors = {vertex: None for vertex in self.adj_list}
 
-        """
-    stops = [endVert]
-    visited = set()
-    toVisit = self.adj_list[endVert]
-    currentDistance = shortestDistance
-    """
         for vertex, distance in dists.items():
             for adjacentVertex, dist in self.adj_list[vertex]:
                 # check if the shortest distance to the neighbor from start is equal to shortest distance to current vertex + distance from current vertex to neighbor
@@ -151,10 +151,39 @@ class Graph:
 
         return path
     
-    def shortestCycle(self, startVert) -> list:
-        """ From startVert, create the shortest cycle through all vertices to go back to start"""
-        return list(self.adj_list)
+    def kruskal(self) -> "Graph":
+        """
+        Kruskal's algorithm to find the minimum spanning tree of the graph.
+        """
+        # Sort edges by weight
+        self.edges.sort(key= lambda e: e[0])
+        mst = Graph()
+        # disjoint set of vertices to detect cycles. contains connections between vertices if they exist
+        disjointSet = []
+        for vert in self.adj_list:
+            mst.addVertex(vert)
+            disjointSet.append({vert})
 
+        for weight, vertex1, vertex2 in self.edges:
+            # if any set contains the vertex in disjointSet store in these
+            vert1Set = set()
+            vert2Set = set()
+            for mySet in disjointSet:
+                if vertex1 in mySet:
+                    vert1Set = mySet
+                if vertex2 in mySet:
+                    vert2Set = mySet
+            
+            # if there is not already an edge between these two
+            if vert1Set is not vert2Set:
+                mst.addEdge(vertex1, vertex2, weight)
+                tempSet = vert1Set.union(vert2Set)
+                disjointSet.remove(vert1Set)
+                disjointSet.remove(vert2Set)
+                disjointSet.append(tempSet)
+
+        return mst
+    
 
 if __name__ == "__main__":
     # Sample graph with 5 vertices all interconnected.
@@ -184,4 +213,4 @@ if __name__ == "__main__":
     
     pinGraph.addEdge("Harvard Square", "Harvard Museum of Natural History & Arts",4)
 
-    print(pinGraph.shortestCycle("Harvard University"))
+    print(pinGraph.kruskal())
