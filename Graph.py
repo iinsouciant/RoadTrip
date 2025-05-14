@@ -33,6 +33,9 @@ class Graph:
         for v in self.adj_list:
             yield v
 
+    def __sizeof__(self) -> int:
+        return len(list(self.adj_list))
+
     def addVertex(self, vertex):
         """
         Adds a vertex to graph
@@ -40,8 +43,6 @@ class Graph:
         # Add a vertex if it does not already exist
         if vertex not in self.adj_list:
             self.adj_list[vertex] = []
-
-    # Ensure that your graph can handle String identifiers for vertices.
 
     def addEdge(self, vertex1, vertex2, weight=1.0):
         """
@@ -54,6 +55,17 @@ class Graph:
             self.edges.append((weight, vertex1, vertex2))
         else:
             raise ValueError("Both vertices must exist in the graph.")
+    
+    def findEdge(self, vertex1, vertex2) -> list:
+        w = None
+        for adjVert, weight in self.adj_list[vertex1]:
+            if adjVert == vertex2:
+                w = weight
+                break
+        
+        if w:
+            return [w, vertex1, vertex2]
+        raise Exception("Both vertices must exist in the graph.")
 
     def removeEdge(self, vertex1, vertex2):
         """Remove the first edge found that contains the two vertices."""
