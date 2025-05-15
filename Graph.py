@@ -56,7 +56,12 @@ class Graph:
         else:
             raise ValueError("Both vertices must exist in the graph.")
     
-    def findEdge(self, vertex1, vertex2) -> list:
+    def findEdge(self, vertex1, vertex2) -> list|None:
+        """
+        If the edge exists in the adjacenecy list:
+        - return edge in the form of list[weight, vertex1, vertex2] 
+        else return None
+        """
         w = None
         for adjVert, weight in self.adj_list[vertex1]:
             if adjVert == vertex2:
@@ -65,7 +70,7 @@ class Graph:
         
         if w:
             return [w, vertex1, vertex2]
-        raise Exception("Both vertices must exist in the graph.")
+        # raise Exception("Both vertices must exist in the graph.")
 
     def removeEdge(self, vertex1, vertex2):
         """Remove the first edge found that contains the two vertices."""
