@@ -9,7 +9,7 @@ from math import sqrt
 from itertools import permutations
 
 from typing import Sequence
-from time import time
+from time import time, sleep
 
 
 type Vertex = int
@@ -228,10 +228,111 @@ class DisplayGraph(Graph):
         for vertex in mst:
             if len(mst[vertex]) % 2:
                 oddVertices.append(vertex)
-        for v in oddVertices:
-            print("hi")
         # pair up odd degree vertices w/ min weight to even out degrees
+        # current implementation is brute force, TODO: blossom 5 implementation
+        # https://pub.ista.ac.at/~vnk/papers/blossom5.pdf
+        minDistance = float("inf")
+        minMatchEdges = []
+        # track permutations to verify skipping repeats
+        # ps1 = []
+        # ps2 = []
+        for p in permutations(oddVertices):
+            # skip reverse
+            if p <= p[::-1]:
+                continue
+            # ps1.append(p)
+            # skip subsets of 2 being reversed
+            if p[1::2] < p[::2]:
+                continue
+            # ps2.append(p)
+            edges = []
+            dist = 0
+            for i in range(1, len(p), 2):
+                v1 = p[i-1]
+                v2 = p[i]
+                w = 0
+                for adjVertex, distance in self[v1]:
+                    if adjVertex == v2:
+                        w = distance
+                        dist += w
+                        break
+                
+                edges.append([w,v1,v2])
+            
+            if dist < minDistance:
+                minMatchEdges = edges
+                minDistance = dist
+        
+        # print(minMatchEdges)
+        # print(minDistance)
+        # add min cost perfect match to MST for Eulerian tour
+        for edge in minMatchEdges:
+            mst.addEdge(edge[1], edge[2], edge[0])
+        
+        # create new graph by skipping repeated vertices
+        christofideGraph = DisplayGraph(self.canvas)
+        startVertex = self.canvas.getStartPin()
+        christofideGraph.addVertex(startVertex)
+        # ? to go one direction through graph
+        unvisited = {vert for vert in mst}
+        visited = {startVertex}
+        unvisited.remove(startVertex)
+        route = [startVertex]
+        distance = 0
+        while unvisited:
+            lastVert = route[-1]
+            nextVert = None
+            w = None
+            for adjVert, weight in mst[lastVert]:
+                if adjVert not in visited:
+                    nextVert = adjVert
+                    w = weight
+                    break
+            # if the mst does not have path to unvisited node
+            if not nextVert:
+                result = None
+                i = -2
+                while not result:
+                    # then vert before last has another direction it can go
+                    lastVert = route[i]
+                    for adjVert, weight in mst[lastVert]:
+                        if adjVert not in visited:
+                            nextVert = adjVert
+                            break
+                    # now find distance from last step to next
+                    result = self.findEdge(route[-1], nextVert)
+                    if result:
+                        w = result[0]
+                    else:
+                        i -= 1
+                        # raise Exception("Invalid new edge for christofides route")
 
+            unvisited.remove(nextVert)
+            visited.add(nextVert)
+            christofideGraph.addVertex(nextVert)
+            christofideGraph.addEdge(route[-1],nextVert,w)
+            distance += w
+            route.append(nextVert)
+
+        
+        return route, distance
+
+        # prevVertex = None
+        # while unvisited:
+        #     vertex = unvisited.pop()
+        #     visited.add(vertex)
+        #     christofideGraph.addVertex(vertex)
+        #     for adjVert, weight in mst[vertex]:
+        #         if adjVert not in visited and adjVert not in unvisited:
+        #             unvisited.insert(0, adjVert)
+        #     if prevVertex:
+        #         result = mst.findEdge(vertex, prevVertex)
+        #         if result:
+        #             w = result[0]
+        #         else:
+        #             w, _, _ = self.findEdge(vertex, prevVertex)
+        #         christofideGraph.addEdge(vertex, prevVertex, w)
+        #     prevVertex = vertex
 
 class PinImage(ImageTk.PhotoImage):
     def __init__(self):
@@ -364,6 +465,7 @@ class PinCanvas(ctk.CTkCanvas):
         """
         Create pin image on canvas at given location, update location in dictionary, and bind the needed functions to the pin.
         """
+        # maybe add label under pin that denotes tag id? pair in tuple and move together?
         for pin, loc2 in self.locations.items():
             if loc2 == loc:
                 print("Cannot overlap pins!")
