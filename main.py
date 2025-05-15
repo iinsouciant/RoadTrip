@@ -221,6 +221,7 @@ class DisplayGraph(Graph):
         """
         Modifying of MST to become 1 cycle to approach optimal solution.
         Written based off of explanation from here: https://youtu.be/GiDsjIBOVoA?t=726
+        O(n^4) time, but improved by the perfect matching algorithm. Blossom V would improve speed but ran out of time
         """
         mst = self.getMST()
         # get odd degree vertices in MST
@@ -237,6 +238,7 @@ class DisplayGraph(Graph):
         # ps1 = []
         # ps2 = []
         for p in permutations(oddVertices):
+            # skipping should improve by factor of 4?
             # skip reverse
             if p <= p[::-1]:
                 continue
@@ -248,7 +250,7 @@ class DisplayGraph(Graph):
             edges = []
             dist = 0
             for i in range(1, len(p), 2):
-                v1 = p[i-1]
+                v1 = p[i - 1]
                 v2 = p[i]
                 w = 0
                 for adjVertex, distance in self[v1]:
@@ -256,26 +258,22 @@ class DisplayGraph(Graph):
                         w = distance
                         dist += w
                         break
-                
-                edges.append([w,v1,v2])
-            
+
+                edges.append([w, v1, v2])
+
             if dist < minDistance:
                 minMatchEdges = edges
                 minDistance = dist
-        
-        # print(minMatchEdges)
-        # print(minDistance)
+
         # add min cost perfect match to MST for Eulerian tour
         for edge in minMatchEdges:
             mst.addEdge(edge[1], edge[2], edge[0])
-        
+
         # create new graph by skipping repeated vertices
-        christofideGraph = DisplayGraph(self.canvas)
+        # christofideGraph = DisplayGraph(self.canvas)
         startVertex = self.canvas.getStartPin()
-        christofideGraph.addVertex(startVertex)
-        # ? to go one direction through graph
+        # christofideGraph.addVertex(startVertex)
         unvisited = {vert for vert in mst}
-        visited = {startVertex}
         unvisited.remove(startVertex)
         route = [startVertex]
         distance = 0
@@ -284,11 +282,11 @@ class DisplayGraph(Graph):
             nextVert = None
             w = None
             for adjVert, weight in mst[lastVert]:
-                if adjVert not in visited:
+                if adjVert not in route:
                     nextVert = adjVert
                     w = weight
                     break
-            # if the mst does not have path to unvisited node
+            # if the mst does not have path to unvisited node, back track until next valid
             if not nextVert:
                 result = None
                 i = -2
@@ -296,7 +294,7 @@ class DisplayGraph(Graph):
                     # then vert before last has another direction it can go
                     lastVert = route[i]
                     for adjVert, weight in mst[lastVert]:
-                        if adjVert not in visited:
+                        if adjVert not in route:
                             nextVert = adjVert
                             break
                     # now find distance from last step to next
@@ -304,35 +302,19 @@ class DisplayGraph(Graph):
                     if result:
                         w = result[0]
                     else:
+                        # back trace if needed
                         i -= 1
-                        # raise Exception("Invalid new edge for christofides route")
 
             unvisited.remove(nextVert)
-            visited.add(nextVert)
-            christofideGraph.addVertex(nextVert)
-            christofideGraph.addEdge(route[-1],nextVert,w)
+            # christofideGraph.addVertex(nextVert)
+            # christofideGraph.addEdge(route[-1],nextVert,w)
             distance += w
             route.append(nextVert)
 
-        
+        distance += self.findEdge(startVertex, route[-1])[0]
+        route.append(startVertex)
         return route, distance
 
-        # prevVertex = None
-        # while unvisited:
-        #     vertex = unvisited.pop()
-        #     visited.add(vertex)
-        #     christofideGraph.addVertex(vertex)
-        #     for adjVert, weight in mst[vertex]:
-        #         if adjVert not in visited and adjVert not in unvisited:
-        #             unvisited.insert(0, adjVert)
-        #     if prevVertex:
-        #         result = mst.findEdge(vertex, prevVertex)
-        #         if result:
-        #             w = result[0]
-        #         else:
-        #             w, _, _ = self.findEdge(vertex, prevVertex)
-        #         christofideGraph.addEdge(vertex, prevVertex, w)
-        #     prevVertex = vertex
 
 class PinImage(ImageTk.PhotoImage):
     def __init__(self):
@@ -685,6 +667,7 @@ class ContainerFrame(ctk.CTkFrame):
         self.SOLUTIONS = [
             "Nearest Neigbor",
             "Brute Force",
+            "Christofide's Approximation",
             "Minimum Spanning Tree",
             "Compare to MST Lower Bound",
             "Compare to Brute Force",
@@ -732,15 +715,22 @@ class ContainerFrame(ctk.CTkFrame):
                 f"Brute force distance: {distance} u\nDuration: {dur:9.9f} s\nRoute: {route}"
             )
             print("-" * 15 + "\n")
-        elif self.choice == self.SOLUTIONS[2]:
+        elif self.choice == self.SOLUTIONS[3]:
             # MST
             route, distance = self.pinCanvas.graph.drawLowerBoundRoute()
             dur = time() - startTime
             print(f"MST distance: {distance} u\nDuration: {dur:9.9f} s\nRoute: {route}")
             print("-" * 15 + "\n")
-            self.pinCanvas.graph.christofidesRoute()
             return
-        elif self.choice == self.SOLUTIONS[3]:
+        elif self.choice == self.SOLUTIONS[2]:
+            # Christofide algorithm approximation using MST
+            route, distance = self.pinCanvas.graph.christofidesRoute()
+            dur = time() - startTime
+            print(
+                f"Christofide's approximation distance: {distance} u\nDuration: {dur:9.9f} s\nRoute: {route}"
+            )
+            print("-" * 15 + "\n")
+        elif self.choice == self.SOLUTIONS[4]:
             # Compare NN and MST
             route1, distance1 = self.pinCanvas.graph.nearestNeighborRoute()
             dur1 = time() - startTime
@@ -760,11 +750,26 @@ class ContainerFrame(ctk.CTkFrame):
             )
             print("-" * 15 + "\n")
 
+            startTime = time()
+            route3, distance3 = self.pinCanvas.graph.christofidesRoute()
+            dur3 = time() - startTime
+            print(
+                f"Christofide's approximation distance: {distance3} u\nDuration: {dur3:9.9f} s\nRoute: {route3}"
+            )
+            print("-" * 15 + "\n")
+            self.pinCanvas.drawRoute(route3, clear=False, fill="black", offset=(12, 19))
+
             print(
                 f"Time taken by NN solution: {(dur1 * 100 / dur2):9.3f}% of lower bound MST"
             )
             print(
                 f"Cost of route by NN solution: {(distance1 * 100 / distance2) - 100:9.3f}% more than lower bound MST"
+            )
+            print(
+                f"Time taken by Christofide's solution: {(dur3 * 100 / dur2):9.3f}% of lower bound MST"
+            )
+            print(
+                f"Cost of route by Christofide's solution: {(distance3 * 100 / distance2) - 100:9.3f}% more than lower bound MST"
             )
             print("-" * 15 + "\n")
             return
@@ -777,6 +782,15 @@ class ContainerFrame(ctk.CTkFrame):
             )
             print("-" * 15 + "\n")
             self.pinCanvas.drawRoute(route1)
+
+            startTime = time()
+            route3, distance3 = self.pinCanvas.graph.christofidesRoute()
+            dur3 = time() - startTime
+            print(
+                f"Christofide's approximation distance: {distance3} u\nDuration: {dur3:9.9f} s\nRoute: {route3}"
+            )
+            print("-" * 15 + "\n")
+            self.pinCanvas.drawRoute(route3, clear=False, fill="black", offset=(12, 19))
 
             startTime = time()
             route2, distance2 = self.pinCanvas.graph.bruteForceRoute()
@@ -794,6 +808,12 @@ class ContainerFrame(ctk.CTkFrame):
             )
             print(
                 f"Cost of route by NN solution: {(distance1 * 100 / distance2) - 100:9.3f}% more than brute force"
+            )
+            print(
+                f"Time taken by Christofide's solution: {(dur3 * 100 / dur2):9.3f}% of brute force"
+            )
+            print(
+                f"Cost of route by Christofide's solution: {(distance3 * 100 / distance2) - 100:9.3f}% more than brute force"
             )
             print("-" * 15 + "\n")
             return
