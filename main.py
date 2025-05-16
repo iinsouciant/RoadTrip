@@ -9,7 +9,7 @@ from math import sqrt
 from itertools import permutations
 
 from typing import Sequence
-from time import time, sleep
+from time import time
 
 
 type Vertex = int
@@ -355,7 +355,8 @@ class PinCanvas(ctk.CTkCanvas):
             self,
             text="X: None Y: None",
             font=font,
-            text_color="#f4eadf",
+            # text_color="#f4eadf",
+            text_color="gray60",
             fg_color="#000001",
         )
         self.pinCoords.grid(row=0, column=0, padx=10, pady=10, sticky="nw")
@@ -423,13 +424,13 @@ class PinCanvas(ctk.CTkCanvas):
             self.canvasy(event.y) - loc[1],
         )
 
-    def __removePin(self, event: Event, pin) -> None:
+    def __removePin(self, event: Event|None, pin) -> None:
         self.delete(pin)
         self.locations.pop(pin, None)
         if self.startPin == pin:
             self.startPin = None
 
-    def __updateCoordText(self, event: Event, pin) -> None:
+    def __updateCoordText(self, event: Event|None, pin) -> None:
         self.pinCoords.configure(
             text=f"X: {int(self.locations[pin][0])} Y:{int(self.locations[pin][1])}"
         )
@@ -476,6 +477,8 @@ class PinCanvas(ctk.CTkCanvas):
         self.tag_bind(pin, "<Button1-Motion>", moveHandler, add="+")
         self.tag_bind(pin, "<Button-3>", removeHandler, add="+")
         self.tag_bind(pin, "<Button-2>", startHandler, add="+")
+        
+        self.__updateCoordText(None, pin)
 
     def raisePins(self) -> None:
         for pin in list(self.locations):
@@ -757,7 +760,7 @@ class ContainerFrame(ctk.CTkFrame):
                 f"Christofide's approximation distance: {distance3} u\nDuration: {dur3:9.9f} s\nRoute: {route3}"
             )
             print("-" * 15 + "\n")
-            self.pinCanvas.drawRoute(route3, clear=False, fill="black", offset=(12, 19))
+            self.pinCanvas.drawRoute(route3, clear=False, fill="black", offset=(14, 21))
 
             print(
                 f"Time taken by NN solution: {(dur1 * 100 / dur2):9.3f}% of lower bound MST"
@@ -800,7 +803,7 @@ class ContainerFrame(ctk.CTkFrame):
             )
             print("-" * 15 + "\n")
             self.pinCanvas.drawRoute(
-                route2, clear=False, fill="gray30", offset=(12, 19)
+                route2, clear=False, fill="gray30", offset=(14, 21)
             )
 
             print(
