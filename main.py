@@ -91,10 +91,10 @@ class DisplayGraph(Graph):
     ) -> tuple[list["Vertex"], float]:
         """
         Get a guess at the optimal route by going to the least costly connected vector.
-        Time complexity: O(n+n(nlogn)+n^2+n) -> O(n^2(logn+1))
+        Time complexity: O(n+n(nlogn)+n+n) -> O((n^2+n)logn)
         - n to put each vertex in set
         - n(nlogn) to merge sort list of edges to all other vertices for all n vertices
-        - n^2 to loop through every vertex and check if not already visited
+        - nlogn to loop through every vertex and check if not already visited in set as more are visited
         - n to get the distance from last in route to start vertex
         """
         if not startVertex:
@@ -234,7 +234,7 @@ class DisplayGraph(Graph):
         # https://pub.ista.ac.at/~vnk/papers/blossom5.pdf
         minDistance = float("inf")
         minMatchEdges = []
-        # track permutations to verify skipping repeats
+        # track permutations to verify skipping repeats for debug
         # ps1 = []
         # ps2 = []
         for p in permutations(oddVertices):
@@ -247,6 +247,8 @@ class DisplayGraph(Graph):
             if p[1::2] < p[::2]:
                 continue
             # ps2.append(p)
+            # print(f"ps1 test array: ({ps1})\n")
+            # print(f"ps2 test array: ({ps2})\n")
             edges = []
             dist = 0
             for i in range(1, len(p), 2):
@@ -718,13 +720,6 @@ class ContainerFrame(ctk.CTkFrame):
                 f"Brute force distance: {distance} u\nDuration: {dur:9.9f} s\nRoute: {route}"
             )
             print("-" * 15 + "\n")
-        elif self.choice == self.SOLUTIONS[3]:
-            # MST
-            route, distance = self.pinCanvas.graph.drawLowerBoundRoute()
-            dur = time() - startTime
-            print(f"MST distance: {distance} u\nDuration: {dur:9.9f} s\nRoute: {route}")
-            print("-" * 15 + "\n")
-            return
         elif self.choice == self.SOLUTIONS[2]:
             # Christofide algorithm approximation using MST
             route, distance = self.pinCanvas.graph.christofidesRoute()
@@ -733,6 +728,13 @@ class ContainerFrame(ctk.CTkFrame):
                 f"Christofide's approximation distance: {distance} u\nDuration: {dur:9.9f} s\nRoute: {route}"
             )
             print("-" * 15 + "\n")
+        elif self.choice == self.SOLUTIONS[3]:
+            # MST
+            route, distance = self.pinCanvas.graph.drawLowerBoundRoute()
+            dur = time() - startTime
+            print(f"MST distance: {distance} u\nDuration: {dur:9.9f} s\nRoute: {route}")
+            print("-" * 15 + "\n")
+            return
         elif self.choice == self.SOLUTIONS[4]:
             # Compare NN and MST
             route1, distance1 = self.pinCanvas.graph.nearestNeighborRoute()
